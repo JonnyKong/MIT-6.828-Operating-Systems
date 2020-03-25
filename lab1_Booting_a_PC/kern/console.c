@@ -192,6 +192,7 @@ cga_putc(int c)
 	}
 
 	// What is the purpose of this?
+	// current crt full, scroll down by one line to create a new line at the bottom
 	if (crt_pos >= CRT_SIZE) {
 		int i;
 
