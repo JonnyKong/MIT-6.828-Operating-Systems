@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 // Simplifed xv6 shell.
 
@@ -44,7 +45,7 @@ struct cmd *parsecmd(char*);
 void
 runcmd(struct cmd *cmd)
 {
-  int p[2], r;
+  int p[2], wstatus, ret, redir_fd;
   struct execcmd *ecmd;
   struct pipecmd *pcmd;
   struct redircmd *rcmd;
@@ -61,22 +62,50 @@ runcmd(struct cmd *cmd)
     ecmd = (struct execcmd*)cmd;
     if(ecmd->argv[0] == 0)
       _exit(0);
-    fprintf(stderr, "exec not implemented\n");
     // Your code here ...
+    execvp(ecmd->argv[0], ecmd->argv);
+    fprintf(stderr, "error: %s: %s\n", strerror(errno), ecmd->argv[0]);
     break;
 
   case '>':
   case '<':
     rcmd = (struct redircmd*)cmd;
-    fprintf(stderr, "redir not implemented\n");
     // Your code here ...
+    // need to set permission for new files
+    if (rcmd->type == '>')
+      redir_fd = open(rcmd->file, rcmd->flags, 0666);
+    else
+      redir_fd = open(rcmd->file, rcmd->flags);
+    ret = dup2(redir_fd, rcmd->fd);
     runcmd(rcmd->cmd);
     break;
 
   case '|':
     pcmd = (struct pipecmd*)cmd;
-    fprintf(stderr, "pipe not implemented\n");
     // Your code here ...
+    ret = pipe(p);
+    if (ret == -1) {
+      fprintf(stderr, "pipe error: %s\n", strerror(errno));
+      _exit(-1);
+    }
+    if (fork() == 0) {  // left file, redirect stdout to pipe write
+      close(p[0]);
+      dup2(p[1], STDOUT_FILENO);
+      // close(p[1]);
+      runcmd(pcmd->left);
+    }
+    if (fork() == 0) {  // right file, redirect pipe read to stdin
+      close(p[1]);
+      dup2(p[0], STDIN_FILENO);
+      // close(p[0]);
+      runcmd(pcmd->right);
+    }
+
+    // wait for both children to finish
+    close(p[0]);
+    close(p[1]);
+    wait(&wstatus);
+    wait(&wstatus);
     break;
   }    
   _exit(0);
