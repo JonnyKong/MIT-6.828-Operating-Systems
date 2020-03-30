@@ -32,7 +32,7 @@ A PC's physical address is hard-wired to have the following layout:
 
 <img src="README_img/paddr.png" width="40%">
 
-\The first PCs were based on the 16-bit Intel 8088 processor, which is capable of addressing only 1MB of physical memory (therefore [0x000A0000, 0x000FFFFF]). 
+The first PCs were based on the 16-bit Intel 8088 processor, which is capable of addressing only 1MB of physical memory (therefore [0x000A0000, 0x000FFFFF]). 
 
 * **Low Memory:** This 640KB region were the only area that an early PC could use.
 * **"I/O hole"**: This layout is preserved for compatibility. The BIOS occupies the top 64KB of this region.
@@ -54,23 +54,23 @@ We can see that the bootloader performs several additional tasks:
 
 1. Switch from 16-bit real mode to 32-bit protected mode
 
-<img src="README_img/bootloader_switch.png" width="70%">
+    <img src="README_img/bootloader_switch.png" width="70%">
 
 2. Initialize a stack so that the C code can run
 
-<img src="README_img/bootloader_set_sp.png" width="55%">
+    <img src="README_img/bootloader_set_sp.png" width="55%">
 
 3. Load the kernel binary ELF from the first disk sector. Note that it uses a magic number to check whether the ELF is valid. 
 
-<img src="README_img/bootloader_load_kernel.png" width="75%">
+    <img src="README_img/bootloader_load_kernel.png" width="75%">
 
 4. Pass control to OS kernel by calling its entry point (the `_start` symbol). 
 
-<img src="README_img/bootloader_call_kernel.png" width="55%">
+    <img src="README_img/bootloader_call_kernel.png" width="55%">
 
 - To find out the kernel ELF's entry point (`_start`), you can dump symbols of the ELF binary by `objdump -x <binary>`, or `objdump -f <binary>`:
 
-<img src="README_img/kernel_objdump_-x.png" width="50%">
+    <img src="README_img/kernel_objdump_-x.png" width="50%">
 
 ## Part 3: The Kernel
 
@@ -91,4 +91,4 @@ In this exercise, we write a new kernel monitor function that 1) prints a *backt
 * The x86 stack pointer `%esp` points to the lowest location on the stack that is currently in use. The base pointer `%ebp` normally saves the previous function's base pointer by pushing it onto the stack, and then copies the current `%esp` value into `%ebp` for the duration of the function. So we can follow the `%ebp` to recursively trace back to the bottom of the stack.
 * The function `debuginfo_eip()` searches for debug information in the symtol table (`__STAB_*`).
 
-<img src="README_img/mon_backtrace.png" width="80%">
+    <img src="README_img/mon_backtrace.png" width="80%">
