@@ -12,7 +12,7 @@ The operating system must keep track of which parts of physical RAM are free and
 
 #### What's the interface?
 
-The interface is invoked by the virtuam memory allocator:
+The interface is invoked by the virtual memory allocator:
 
 ```C
 struct PageInfo *page_alloc(int alloc_flags);
@@ -27,8 +27,10 @@ Some pages are already taken, so the allocator manages the remaining pages (in w
 
 #### How does it work?
 
-* The allocator maintains an `struct PageInfo* pages[]` array to keep track of each page. 
-* Put vacant pages into a free list.
+* The allocator maintains an `struct PageInfo* pages[]` array to keep track of each physical page. 
+    * This struct contains a reference count. So when multiple virtual pages matches to the same physical page, it knows when to free.
+    * Note that unlike `malloc()`, this array is not embedded in the free blocks themselves.
+* Track vacant physical pages in a free list.
 
 ## Part 2: Virtual Memory Management
 
@@ -47,8 +49,8 @@ void page_remove(pde_t *pgdir, void *va);
 
 In x86, there are 2 layers of address translation, which the kernel don't have direct control:
 
-* Segment translation: once entering 32-bit protected mode from 16-bit real mode, the kernel cannot bypass segment translation
-* Page translation: Once enabled, the kernel cannot bypass page translation. To bypass this restriction, we perform a linear mapping from back to the physical memory space. 
+* *Segment translation*: once entering 32-bit protected mode from 16-bit real mode, the kernel cannot bypass segment translation
+* *Page translation*: Once enabled, the kernel cannot bypass page translation. To bypass this restriction, we perform a linear mapping from back to the physical memory space. 
     * **%cr0**: turn on paging (paging is optional)
     * **%cr3**: entrypgdir
 
