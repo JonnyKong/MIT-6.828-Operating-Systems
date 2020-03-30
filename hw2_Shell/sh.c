@@ -91,13 +91,13 @@ runcmd(struct cmd *cmd)
     if (fork() == 0) {  // left file, redirect stdout to pipe write
       close(p[0]);
       dup2(p[1], STDOUT_FILENO);
-      // close(p[1]);
+      close(p[1]);
       runcmd(pcmd->left);
     }
     if (fork() == 0) {  // right file, redirect pipe read to stdin
       close(p[1]);
       dup2(p[0], STDIN_FILENO);
-      // close(p[0]);
+      close(p[0]);
       runcmd(pcmd->right);
     }
 
