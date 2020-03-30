@@ -8,14 +8,14 @@ This lab has 3 sections:
 
 ## Part 1: PC Boostrap
 
-#### x86 assembly
+### x86 assembly
 
 This course follows the AT&T x86 syntax. It is semantically equivalent to the Intel x86 syntax:
 
 * [Brennan's Guide to Inline Assembly](http://www.delorie.com/djgpp/doc/brennan/brennan_att_inline_djgpp.html)
 * [Intel 80386 reference manual](https://pdos.csail.mit.edu/6.828/2018/readings/i386/toc.htm)
 
-#### Simulating the x86
+### Simulating the x86
 
 This course uses a custom-built QEMU with several useful debugging changes, which can be installed following the directions on the [tools page](https://pdos.csail.mit.edu/6.828/2018/tools.html). 
 
@@ -26,7 +26,7 @@ QEMU can act as a **remote debugging target** for GDB, so that we can step throu
 $ make qemu[-nox][-gdb]
 ```
 
-#### PC's Physical Address Space
+### PC's Physical Address Space
 
 A PC's physical address is hard-wired to have the following layout:
 
@@ -38,7 +38,7 @@ The first PCs were based on the 16-bit Intel 8088 processor, which is capable of
 * **"I/O hole"**: This layout is preserved for compatibility. The BIOS occupies the top 64KB of this region.
 * **Extended memory**: Used by more modern PCs. Some space at the very top of the 32-bit address space is now commonly reserved by the BIOS for use by 32-bit PCI devices. This means to support more than 4GB of physical memory, BIOS must arrange to leave a *second* hole.
 
-#### The ROM BIOS
+### The ROM BIOS
 
 BIOS is "hard-wired" to the physical address range [0x000F0000, 0x000FFFFF], and always gets control of the machine first: On processor reset, the processor enters real mode and sets CS to 0xF000 and the IP to 0xFFF0, so that execution begins at that (CS:IP) segment address (0xFFFF0).
 
@@ -74,17 +74,17 @@ We can see that the bootloader performs several additional tasks:
 
 ## Part 3: The Kernel
 
-#### Use virtual memory to work around position dependence
+### Use virtual memory to work around position dependence
 
 OS kernels often like to be linked and run at very high *virtual address*, such as 0xf0100000, in order to leave the lower part of the processor's virtual address space for user programs to use. However, it doesn't necessarily have to be loaded in the same way. 
 
 This is enabled by the separation of ELF's **link address** and **load address** -- the OS thinks it is being loaded to link address, but it's actually loaded to load address. To bootstrap, we use a hand-written, statically-initialized page directory and page table in `kern/entrypgdir.c`.
 
-#### Formatted Printing to the Console
+### Formatted Printing to the Console
 
 See `kern/printf.c`, `lib/printfmt.c` and `kern/console.c`. 
 
-#### The Stack
+### The Stack
 
 In this exercise, we write a new kernel monitor function that 1) prints a *backtrace* of the stack, and 2) along with debug information including the function name, source file name, and line number corresponding to that `eip`.
 
