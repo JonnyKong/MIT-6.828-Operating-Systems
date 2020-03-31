@@ -13,6 +13,7 @@ struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
+extern int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
 
 void
 tvinit(void)
@@ -46,6 +47,7 @@ trap(struct trapframe *tf)
     return;
   }
 
+  char *mem;
   switch(tf->trapno){
   case T_IRQ0 + IRQ_TIMER:
     if(cpuid() == 0){
@@ -77,6 +79,18 @@ trap(struct trapframe *tf)
             cpuid(), tf->cs, tf->eip);
     lapiceoi();
     break;
+  case T_PGFLT:
+    mem = kalloc();
+    // fall through if kalloc fails
+    if (mem != 0) {
+      // va that triggered pgflt is in rcr2
+      uint va = PGROUNDDOWN(rcr2());
+      memset(mem, 0, PGSIZE);
+      // need to convert linear addr to physical addr
+      if (mappages(myproc()->pgdir, (void *)va, PGSIZE, V2P(mem), PTE_W | PTE_U) >= 0)
+        break;
+    }
+    kfree(mem);
 
   //PAGEBREAK: 13
   default:
