@@ -1,4 +1,4 @@
-# Homework 6: xv6 lazy page allocation
+# Homework 4: xv6 lazy page allocation
 
 ## Part 1: Eliminate allocation from sbrk()
 
