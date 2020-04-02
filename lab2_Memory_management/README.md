@@ -6,6 +6,10 @@ This lab has 3 sections:
 2. Virtual memory management: map the virtual addresses to physical addresses. The x86 hardware's memory management unit (MMU) walks the page tables, but the software is responsible for constructing the page tables.
 3. Initialize kernel virtual memory space.
 
+*In the original `kernel.ld`, the `.bss` section does not have the `COMMON` section, causing the `end` symbol being linked to an address lower than uninitialized global variables, which might break the system. So I added my own:*
+
+<img src="README_img/ld.png" width="35%">
+
 ## Part 1: Physical Page Management
 
 The operating system must keep track of which parts of physical RAM are free and which are currently in use. JOS manages the PC's physical memory with *page granularity* so that it can use the MMU to map and protect each piece of allocated memory.
