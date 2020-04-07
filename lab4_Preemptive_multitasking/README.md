@@ -1,4 +1,4 @@
-# Lab4: Preemtive multitasking
+# Lab4: Preemptive multitasking
 
 This lab has 3 sections:
 
