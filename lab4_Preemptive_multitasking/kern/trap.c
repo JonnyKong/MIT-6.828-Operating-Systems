@@ -89,6 +89,12 @@ trap_init(void)
 	void t_mchk();
 	void t_simderr();
 	void t_syscall();
+	void handler32();
+	void handler33();
+	void handler36();
+	void handler39();
+	void handler46();
+	void handler51();
 
 	// LAB 3: Your code here.
 	SETGATE(idt[T_DIVIDE],  0, GD_KT, t_divide,  0);
@@ -110,6 +116,14 @@ trap_init(void)
 	SETGATE(idt[T_MCHK],    0, GD_KT, t_mchk,    0);
 	SETGATE(idt[T_SIMDERR], 0, GD_KT, t_simderr, 0);
 	SETGATE(idt[T_SYSCALL], 0, GD_KT, t_syscall, 3);
+	
+	// IRQs
+	SETGATE(idt[IRQ_OFFSET+IRQ_TIMER], 		0, GD_KT, handler32, 0);
+	SETGATE(idt[IRQ_OFFSET+IRQ_KBD], 		0, GD_KT, handler33, 0);
+	SETGATE(idt[IRQ_OFFSET+IRQ_SERIAL], 	0, GD_KT, handler36, 0);
+	SETGATE(idt[IRQ_OFFSET+IRQ_SPURIOUS], 	0, GD_KT, handler39, 0);
+	SETGATE(idt[IRQ_OFFSET+IRQ_IDE], 		0, GD_KT, handler46, 0);
+	SETGATE(idt[IRQ_OFFSET+IRQ_ERROR], 		0, GD_KT, handler51, 0);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -235,6 +249,10 @@ trap_dispatch(struct Trapframe *tf)
 								  tf->tf_regs.reg_esi);
 			tf->tf_regs.reg_eax = syscall_ret;
 			break;
+		case IRQ_OFFSET + IRQ_TIMER:
+			lapic_eoi();
+			sched_yield();
+			return;
 		default:
 			print_trapframe(tf);
 			if (tf->tf_cs == GD_KT)

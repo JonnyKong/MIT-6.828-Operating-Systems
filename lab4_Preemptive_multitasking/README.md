@@ -4,6 +4,7 @@ This lab has 3 sections:
 
 1. Add **multiprocessor support** to JOS, implement round-robin scheduling, and add basic environment management system calls (calls that create and destroy environments, and allocate/map memory).
 2. Implement the system calls required for **user-space page fault handling**. Then, implement unix-like `fork()`, which is copy-on-write (COW).
+3. Implement **preemptive scheduling** and basic IPC.
 
 Some terminologies used in this lab:
 
@@ -83,21 +84,55 @@ To setup user-space fault handling:
 
 5. Implement COW `fork()`. Need to setup page table permissions correctly for COW to work.
 
+## Part C: Preemptive Multitasking and Inter-Process Communication (IPC)
+
+Up to now we except processes calling `sys_yield()` to yield. In this part we will implement preemptive scheduling.
+
+External interrupts (i.e., device interrupts) are referred to as **IRQs**. There are 16 possible IRQs, numbered 0 through 15. The mapping from IRQ number to IDT entry is not fixed.`pic_init` in `picirq.c` maps IRQs 0-15 to IDT entries `IRQ_OFFSET` (32) through `IRQ_OFFSET+15` (47).
+
+The clock interrupt is IRQ 0, which is what we use for preemptive scheduling.
+
+* Note that when the scheduler couldn't find a process to schedule, the CPU enters idle by calling `hlt` in  `sched_halt()`. A halted processor returns to active by clock interrupts.
+
+We need to:
+
+1. Unmask interrupts (up to now we have been masking interrupts)
+
+2. Call `sched_yield()` on interrupt:
+
+    <img src="README_img/irq.png" width="50%">
+
+3. Implement basic IPC, which can send 1 integer and 1 page mapping at a time. The IPC involves:
+
+    * 2 system calls:
+
+        ```C
+        int sys_ipc_recv(void *dstva);
+        int sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm);
+        ```
+
+    * and 2 library wrappers:
+
+        ```C
+        int32_t ipc_recv(envid_t *from_env_store, void *pg, int *perm_store);
+        void ipc_send(envid_t to_env, uint32_t val, void *pg, int perm);
+        ```
+
 ## Questions
 
-1. Compare `kern/mpentry.S` side by side with `boot/boot.S`. What is the purpose of macro `MPBOOTPHYS`?
+1. *Compare `kern/mpentry.S` side by side with `boot/boot.S`. What is the purpose of macro `MPBOOTPHYS`?*
 
     * Addresses in `mpentry.S` are above `KERNBASE`, therefore cannot be addressed in real mode.
 
-2. It seems that using the big kernel lock guarantees that only one CPU can run the kernel code at a time. Why do we still need separate kernel stacks for each CPU?
+2. *It seems that using the big kernel lock guarantees that only one CPU can run the kernel code at a time. Why do we still need separate kernel stacks for each CPU?*
 
     * The big kernel lock is acquired at the beginning `trap()`. At this point, the handlers have already pushed a `TrapFrame` onto the stack. Therefore multiple processors receiving interrupts simultaneously will corrupt the stack.
 
-3. In your implementation of `env_run()` you should have called `lcr3()`. Before and after the call to `lcr3()`, your code makes references (at least it should) to the variable `e`, the argument to `env_run`. Why can the pointer `e` be dereferenced both before and after the addressing switch
+3. *In your implementation of `env_run()` you should have called `lcr3()`. Before and after the call to `lcr3()`, your code makes references (at least it should) to the variable `e`, the argument to `env_run`. Why can the pointer `e` be dereferenced both before and after the addressing switch*
 
     * Every env has the same kernel address mapping.
 
-4. Whenever the kernel switches from one environment to another, it must ensure the old environment's registers are saved so they can be restored properly later. Why? Where does this happen?
+4. *Whenever the kernel switches from one environment to another, it must ensure the old environment's registers are saved so they can be restored properly later. Why? Where does this happen?*
 
     * In all interrupt handlers, we call `pushal` to push all registers to form a `TrapFrame`. See `trapentry.S`:
 
