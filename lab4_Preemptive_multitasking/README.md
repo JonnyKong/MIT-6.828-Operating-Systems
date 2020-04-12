@@ -2,7 +2,8 @@
 
 This lab has 3 sections:
 
-1. Add multiprocessor support to JOS, implement round-robin scheduling, and add basic environment management system calls (calls that create and destroy environments, and allocate/map memory).
+1. Add **multiprocessor support** to JOS, implement round-robin scheduling, and add basic environment management system calls (calls that create and destroy environments, and allocate/map memory).
+2. Implement the system calls required for **user-space page fault handling**. Then, implement unix-like `fork()`, which is copy-on-write (COW).
 
 Some terminologies used in this lab:
 
@@ -14,7 +15,7 @@ Some terminologies used in this lab:
 
 ## Part A: Multiprocessor Support and Cooperative Multitasking
 
-1. We copy the entry code for AP to `0x7000` (`MPENTRY_PADDR`). Modify the physical memory allocator, such that the `MPENTRY_PADDR` page does not get added to the free list. 
+1. Need to startup the APs. We copy the entry code for AP to `0x7000` (`MPENTRY_PADDR`). Modify the physical memory allocator, such that the `MPENTRY_PADDR` page does not get added to the free list. 
 
     The BSP will send the `STARTUP` interprocessor interrupt (IPI) to the APs to bring up other CPUs (see `lapic_startap()`).
 
@@ -40,7 +41,47 @@ Some terminologies used in this lab:
   sys_page_unmap();         // unmap a page mapped at a given virtual address in a given environment
   ```
   
-  Note that  `fork()` is implemented in user-space, and will call these system calls.
+  Note that  `fork()` is implemented in user-space, and will call these system calls, which is implemented in Part B.
+
+## Part B: Copy-on-Write Fork
+
+User-space fault handling gives more flexibility. For example, users can implement their own `fork()` and decide whether it copies pages eagarly or lazily.
+
+Execution of the fault handler UDF has to be done a separate **user exception stack**, because:
+
+* User registers the fault handler with a user-space function, so we can't use the kernel stack
+* Similar to handling interrupts, the user stack could be corrupted
+
+To setup user-space fault handling:
+
+1. Implement syscall `sys_env_set_pgfault_upcall()`, which sets the handler for the given environment. Each `struct env` has a function pointer to the handler function, initialized to `NULL`.
+
+    *This function is called by `set_pgfault_handler()`, the C user library side of the user-level page fault handling mechanism. It calls ``sys_env_set_pgfault_upcall()`  with the assembly stub `_pgfault_upcall` every time.* 
+
+2. Implement `page_fault_handler()`, an ISR required to dispatch page faults to the user-mode handler.
+
+    * Pushes a `struct UTrapframe` to the user exception stack, containing the context before the fault
+
+    * Call `env_pgfault_upcall()` on the new user exception stack. This is a assembly stub, which we will implement in the next step
+
+        <img src="README_img/page_fault_handler.png" width="90%">
+
+3. Implement assembly stub `_pgfault_upcall()`, which calls the UDF handler, and then **returns to the original point in the user code that caused the page fault, without going back through the kernel**.
+
+    To this end, we push the trap-time `%eip` to the trap-time stack, restore context and `%esp`, and call `ret`:
+
+    <img src="README_img/_pgfault_upcall.png" width="100%">
+
+4. Implement the code in `page_fault_handler` in `kern/trap.c` required to dispatch page faults to the user-mode handler:
+
+    * Calls `sys_env_set_pgfault_upcall()` with the assembly stub `_pgfault_upcall` as argument
+    * Set global symbol `_pgfault_handler` to the actual handler, which is called from `_pgfault_upcall`
+
+    <img src="README_img/set_pgfault_handler.png" width="85%">
+
+    By calling `_pgfault_upcall` every time (instead of calling the handler UDF directly), we are able to have some control before/after calling the handler UDF, and set up required states.
+
+5. Implement COW `fork()`. Need to setup page table permissions correctly for COW to work.
 
 ## Questions
 

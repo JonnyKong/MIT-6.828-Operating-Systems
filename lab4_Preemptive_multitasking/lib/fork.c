@@ -25,6 +25,9 @@ pgfault(struct UTrapframe *utf)
 	//   (see <inc/memlayout.h>).
 
 	// LAB 4: Your code here.
+	if (!((err & FEC_WR) && (uvpd[PDX(addr)] & PTE_P)
+			&& (uvpt[PGNUM(addr)] & PTE_COW) && (uvpt[PGNUM(addr)] & PTE_P)))
+		panic("page cow check failed");
 
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
@@ -34,7 +37,21 @@ pgfault(struct UTrapframe *utf)
 
 	// LAB 4: Your code here.
 
-	panic("pgfault not implemented");
+	// allocate a new page
+	addr = ROUNDDOWN(addr, PGSIZE);
+	if ((r = sys_page_alloc(0, PFTEMP, PTE_P | PTE_U | PTE_W)))
+		panic("sys_page_alloc: %e", r);
+	
+	// copy data from old page to the new one
+	memmove(PFTEMP, addr, PGSIZE);
+
+	// move the new page to old page address
+	if ((r = sys_page_map(0, PFTEMP, 0, addr, PTE_P | PTE_U | PTE_W)))
+		panic("sys_page_map: %e", r);
+
+	// unmap old address
+	if ((r = sys_page_unmap(0, PFTEMP)))
+		panic("sys_page_unmap: %e", r);
 }
 
 //
@@ -54,7 +71,20 @@ duppage(envid_t envid, unsigned pn)
 	int r;
 
 	// LAB 4: Your code here.
-	panic("duppage not implemented");
+	
+	void *addr = (void *)(pn * PGSIZE);
+	if (uvpt[pn] & (PTE_W | PTE_COW)) {
+		// mark pages from both env to COW
+		if ((r = sys_page_map(0, addr, envid, addr, PTE_COW | PTE_U | PTE_P)) < 0)
+			panic("sys_page_map COW:%e", r);
+		if ((r = sys_page_map(0, addr, 0, addr, PTE_COW | PTE_U | PTE_P)) < 0)
+			panic("sys_page_map COW:%e", r);
+	} else {
+		// read-only page, only mark page from child env as COW
+		if ((r = sys_page_map(0, addr, envid, addr, PTE_U|PTE_P)) < 0)
+			panic("sys_page_map UP:%e", r);
+	}
+
 	return 0;
 }
 
@@ -78,7 +108,40 @@ envid_t
 fork(void)
 {
 	// LAB 4: Your code here.
-	panic("fork not implemented");
+
+	set_pgfault_handler(pgfault);
+	envid_t envid = sys_exofork();
+	if (envid < 0) {
+		panic("sys_exofork error: %e", envid);
+	} else if (envid == 0) {
+		// fix "thisenv" for the child process
+		thisenv = &envs[ENVX(sys_getenvid())];
+		return 0;
+	}
+
+	// copy page mapping
+	extern unsigned char end[];
+	void *addr;
+	for (addr = (uint8_t *)UTEXT; addr < (void *)end; addr += PGSIZE) {
+		if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P)
+				&& (uvpt[PGNUM(addr)] & PTE_U)) {
+			duppage(envid, PGNUM(addr));
+		}
+	}
+	duppage(envid, PGNUM(ROUNDDOWN(&addr, PGSIZE)));
+
+	// allocate new page for child env user exception stack
+	int r;
+	if ((r = sys_page_alloc(envid, (void *)(UXSTACKTOP - PGSIZE), PTE_P|PTE_U|PTE_W)))
+		panic("sys_page_alloc error: %e", r);
+
+	extern void _pgfault_upcall();
+	sys_env_set_pgfault_upcall(envid, _pgfault_upcall);
+
+	if ((r = sys_env_set_status(envid, ENV_RUNNABLE)))
+		panic("sys_env_set_status error: %e", r);
+
+	return envid;
 }
 
 // Challenge!
