@@ -6,5 +6,19 @@
  */
 	.globl thread_switch
 thread_switch:
-	/* YOUR CODE HERE */
+	/* push current context to stack, then save esp */
+	pushal
+	movl current_thread, %eax
+	movl %esp, (%eax)
+
+	/* set current_thread to next_thread */
+	movl next_thread, %eax
+	movl %eax, current_thread
+	
+	/* restore next esp, then restore next context */
+	movl (%eax), %esp
+	popal
+
+	/* set next_thread to zero */
+	movl $0x0, next_thread
 	ret				/* pop return address from stack */
