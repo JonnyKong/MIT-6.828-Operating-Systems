@@ -333,8 +333,8 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		pte_t *pte;
         struct PageInfo *p = page_lookup(curenv->env_pgdir, srcva, &pte);
 		if (!p)
-			cprintf("error 1\n");
-		if ((*pte & perm) != perm)
+			return -E_INVAL;
+		if ((perm & (PTE_U | PTE_W)) != (PTE_U | PTE_W))
 			return -E_INVAL;
 		if ((perm & PTE_W) && !(*pte & PTE_W))
 			return -E_INVAL;
