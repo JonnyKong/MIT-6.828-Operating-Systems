@@ -89,7 +89,6 @@ sys_exofork(void)
 
 	struct Env *new_env;
 	int ret = env_alloc(&new_env, curenv->env_id);
-	cprintf("----------- error is %d\n", ret);
 	if (ret)
 		return ret;
 	
