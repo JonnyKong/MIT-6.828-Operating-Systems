@@ -73,7 +73,10 @@ duppage(envid_t envid, unsigned pn)
 	// LAB 4: Your code here.
 	
 	void *addr = (void *)(pn * PGSIZE);
-	if (uvpt[pn] & (PTE_W | PTE_COW)) {
+	if (uvpt[pn] & PTE_SHARE) {
+		if ((r = sys_page_map(0, addr, envid, addr, PTE_SYSCALL)) < 0)
+			panic("sys_page_map SHARED: %e", r);
+	} else if (uvpt[pn] & (PTE_W | PTE_COW)) {
 		// mark pages from both env to COW
 		if ((r = sys_page_map(0, addr, envid, addr, PTE_COW | PTE_U | PTE_P)) < 0)
 			panic("sys_page_map COW:%e", r);
@@ -81,7 +84,7 @@ duppage(envid_t envid, unsigned pn)
 			panic("sys_page_map COW:%e", r);
 	} else {
 		// read-only page, only mark page from child env as COW
-		if ((r = sys_page_map(0, addr, envid, addr, PTE_U|PTE_P)) < 0)
+		if ((r = sys_page_map(0, addr, envid, addr, PTE_U | PTE_P)) < 0)
 			panic("sys_page_map UP:%e", r);
 	}
 
@@ -122,7 +125,7 @@ fork(void)
 	// copy page mapping
 	extern unsigned char end[];
 	void *addr;
-	for (addr = (uint8_t *)UTEXT; addr < (void *)end; addr += PGSIZE) {
+	for (addr = (uint8_t *)UTEXT; addr < (void *)USTACKTOP - PGSIZE; addr += PGSIZE) {
 		if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P)
 				&& (uvpt[PGNUM(addr)] & PTE_U)) {
 			duppage(envid, PGNUM(addr));

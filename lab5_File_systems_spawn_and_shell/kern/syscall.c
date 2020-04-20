@@ -85,7 +85,6 @@ sys_exofork(void)
 
 	struct Env *new_env;
 	int ret = env_alloc(&new_env, curenv->env_id);
-	cprintf("----------- error is %d\n", ret);
 	if (ret)
 		return ret;
 	
@@ -136,7 +135,15 @@ sys_env_set_trapframe(envid_t envid, struct Trapframe *tf)
 	// LAB 5: Your code here.
 	// Remember to check whether the user has supplied us with a good
 	// address!
-	panic("sys_env_set_trapframe not implemented");
+	struct Env *e;
+	if (envid2env(envid, &e, 1))
+		return -E_BAD_ENV;
+	// TODO: when doesn't the parent have permission to change envid?
+
+	memcpy(&e->env_tf, tf, sizeof(struct Trapframe));
+	e->env_tf.tf_eflags |= FL_IF;
+	e->env_tf.tf_eflags &= ~FL_IOPL_MASK;
+	return 0;
 }
 
 // Set the page fault upcall for 'envid' by modifying the corresponding struct
@@ -345,8 +352,8 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 		pte_t *pte;
         struct PageInfo *p = page_lookup(curenv->env_pgdir, srcva, &pte);
 		if (!p)
-			cprintf("error 1\n");
-		if ((*pte & perm) != perm)
+			return -E_INVAL;
+		if ((perm & (PTE_U | PTE_W)) != (PTE_U | PTE_W))
 			return -E_INVAL;
 		if ((perm & PTE_W) && !(*pte & PTE_W))
 			return -E_INVAL;
@@ -423,6 +430,8 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 			return sys_exofork();
 		case SYS_env_set_status:
 			return sys_env_set_status((envid_t)a1, a2);
+		case SYS_env_set_trapframe:
+			return sys_env_set_trapframe((envid_t)a1, (struct Trapframe *)a2);
 		case SYS_env_set_pgfault_upcall:
 			return sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
 		case SYS_yield:

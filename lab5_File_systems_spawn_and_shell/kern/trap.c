@@ -253,6 +253,16 @@ trap_dispatch(struct Trapframe *tf)
 			lapic_eoi();
 			sched_yield();
 			return;
+		case IRQ_OFFSET + IRQ_SPURIOUS:
+			// Handle spurious interrupts
+			// The hardware sometimes raises these because of noise on the
+			// IRQ line or other reasons. We don't care.
+			cprintf("Spurious interrupt on irq 7\n");
+			print_trapframe(tf);
+			return;	
+		case IRQ_OFFSET + IRQ_KBD:
+			serial_intr();
+			return;
 		default:
 			print_trapframe(tf);
 			if (tf->tf_cs == GD_KT)
@@ -261,15 +271,6 @@ trap_dispatch(struct Trapframe *tf)
 				env_destroy(curenv);
 				return;
 			}
-	}
-
-	// Handle spurious interrupts
-	// The hardware sometimes raises these because of noise on the
-	// IRQ line or other reasons. We don't care.
-	if (tf->tf_trapno == IRQ_OFFSET + IRQ_SPURIOUS) {
-		cprintf("Spurious interrupt on irq 7\n");
-		print_trapframe(tf);
-		return;
 	}
 
 	// Handle clock interrupts. Don't forget to acknowledge the

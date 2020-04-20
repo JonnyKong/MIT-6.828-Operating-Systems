@@ -407,6 +407,11 @@ env_create(uint8_t *binary, enum EnvType type)
 	int ret;
 	if ((ret = env_alloc(&e, 0)) < 0)
 		panic("env_alloc error: %e", ret);
+	
+	// enable user-space fs
+	if (type == ENV_TYPE_FS)
+		e->env_tf.tf_eflags |= FL_IOPL_MASK;
+	
 	e->env_type = type;
 	load_icode(e, binary);
 }
