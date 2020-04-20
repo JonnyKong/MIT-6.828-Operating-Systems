@@ -122,7 +122,7 @@ fork(void)
 	// copy page mapping
 	extern unsigned char end[];
 	void *addr;
-	for (addr = (uint8_t *)UTEXT; addr < (void *)end; addr += PGSIZE) {
+	for (addr = (uint8_t *)UTEXT; addr < (void *)USTACKTOP - PGSIZE; addr += PGSIZE) {
 		if ((uvpd[PDX(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_P)
 				&& (uvpt[PGNUM(addr)] & PTE_U)) {
 			duppage(envid, PGNUM(addr));
