@@ -251,6 +251,8 @@ trap_dispatch(struct Trapframe *tf)
 			tf->tf_regs.reg_eax = syscall_ret;
 			break;
 		case IRQ_OFFSET + IRQ_TIMER:
+			if (thiscpu->cpu_id == 0)
+				time_tick();
 			lapic_eoi();
 			sched_yield();
 			return;
