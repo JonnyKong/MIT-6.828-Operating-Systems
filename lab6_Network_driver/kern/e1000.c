@@ -84,16 +84,9 @@ static void e1000_rx_init()
     uint32_t *rah = (uint32_t *)E1000MEM(E1000_RAH_ADDR);
     set_macaddr(ral, rah, qemu_macaddr);
 
-    // // init the multicast table array to 0
-    // uint32_t *mta = (uint32_t *)E1000MEM(E1000_MTA_ADDR);
-    // for (int i = 0; i < 128; ++i)
-    //     mta[i] = 0;
-
     // set interrupt mask set/read to enable interrupt 
     uint32_t *ims = (uint32_t *)E1000MEM(E1000_IMS_ADDR);
     *ims = 0;
-    // uint32_t *ics = (uint32_t *)E1000MEM(E1000_ICS_ADDR);
-    // *ics = 0;
 
     // set the receiver descriptor list
     for (int i = 0; i < RXDESC_CNT; ++i) {
@@ -115,8 +108,6 @@ static void e1000_rx_init()
     rdt->rdt = RXDESC_CNT - 1;
 
     // set the receive control register
-    // uint32_t *rctl = (uint32_t *)E1000MEM(E1000_RCTL_ADDR);
-    // *rctl = E1000_RCTL_EN | E1000_RCTL_BAM | E1000_RCTL_SECRC;
     struct e1000_rctl *rctl = (struct e1000_rctl *)(&mmio_buf);
     rctl->en = 1;
     rctl->bam = 1;
