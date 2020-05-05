@@ -1,4 +1,4 @@
-# MIT-6.828-Operating-Systems
+# 6.828: Operating Systems Engineering
 
 [[Course Website]](https://pdos.csail.mit.edu/6.828/2018/schedule.html)
 
