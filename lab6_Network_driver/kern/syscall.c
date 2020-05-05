@@ -423,7 +423,7 @@ sys_net_send(void *data, size_t len)
 static int
 sys_net_recv(void *data, size_t *len)
 {
-	return 0;
+	return e1000_rx(data, len);	
 }
 
 
